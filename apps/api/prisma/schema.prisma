@@ -1,0 +1,446 @@
+// Plano de CONTROL unicamente (schema `public`).
+//
+// ADR 0001: los datos de las aplicaciones generadas NO viven aqui. Cada proyecto
+// materializa su propio schema `proj_*` con DDL en tiempo de ejecucion, fuera del
+// alcance de Prisma. Este archivo describe solo los metadatos de la plataforma.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/infrastructure/database/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Prisma 7 mueve la URL de conexion a `prisma.config.ts`.
+
+// ---------------------------------------------------------------------------
+// Better Auth. Better Auth es duenno de estas tablas: no se mutan a mano.
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  projects      Project[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// Plataforma
+// ---------------------------------------------------------------------------
+
+/// Estados del proceso, ERS 20.
+///
+/// `draft` no esta en el ERS: alli el flujo empieza con un archivo ya subido
+/// porque se asume una sola aplicacion. Aqui la plataforma es multiproyecto, asi
+/// que existe un instante en que el proyecto ya fue creado pero todavia no tiene
+/// archivo. Ese instante es `draft`.
+enum ProjectStatus {
+  draft
+  uploaded
+  sheet_selected
+  analyzing
+  reviewing_entities
+  reviewing_fields
+  reviewing_relations
+  reviewing_summary
+  creating
+  importing
+  completed
+  failed
+
+  @@map("project_status")
+}
+
+model Project {
+  id     String @id @default(uuid())
+  owner  User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+
+  /// Nombre que ve la persona usuaria. Texto libre.
+  name String
+  /// Derivado del nombre, para URLs. Unico por propietario.
+  slug String
+
+  /// Schema PostgreSQL del plano de datos. Generado por maquina, nunca a partir
+  /// del nombre escrito por el usuario (ADR 0001).
+  schemaName String @unique
+
+  status        ProjectStatus @default(draft)
+  /// Mensaje en lenguaje de negocio cuando `status` es `failed` (RE-05).
+  failureReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sourceFiles SourceFile[]
+  blueprint   Blueprint?
+  jobs        Job[]
+
+  @@unique([ownerId, slug])
+  @@index([ownerId, createdAt])
+  @@map("project")
+}
+
+/// Archivo xlsx subido. Se llena en F2.
+model SourceFile {
+  id        String  @id @default(uuid())
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  /// Nombre con el que llego. Solo para mostrar: nunca se usa como ruta.
+  originalName String
+  /// Ruta de almacenamiento, con nombre generado por el sistema.
+  storagePath String
+  sizeBytes   Int
+  sha256      String
+
+  createdAt DateTime @default(now())
+  sheets    Sheet[]
+
+  @@index([projectId])
+  @@map("source_file")
+}
+
+/// Hoja del archivo. Todas se leen; `included` marca cuales entran al modelo.
+model Sheet {
+  id           String     @id @default(uuid())
+  sourceFile   SourceFile @relation(fields: [sourceFileId], references: [id], onDelete: Cascade)
+  sourceFileId String
+
+  name           String
+  index          Int
+  rowCount       Int     @default(0)
+  headerRowIndex Int?
+  included       Boolean @default(true)
+
+  columns SourceColumn[]
+
+  @@unique([sourceFileId, index])
+  @@index([sourceFileId])
+  @@map("sheet")
+}
+
+/// Columna perfilada (RF-04). `profile` guarda el perfilado determinista.
+model SourceColumn {
+  id      String @id @default(uuid())
+  sheet   Sheet  @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  sheetId String
+
+  index            Int
+  header           String
+  normalizedHeader String
+  profile          Json
+
+  @@unique([sheetId, index])
+  @@index([sheetId])
+  @@map("source_column")
+}
+
+// ---------------------------------------------------------------------------
+// Blueprint: la definicion funcional aprobada, ERS 5.4.
+//
+// Es la bisagra del sistema. Todo lo anterior es propuesta; todo lo posterior es
+// ejecucion determinista a partir de estas filas. La IA escribe aqui una vez y
+// no vuelve a intervenir.
+// ---------------------------------------------------------------------------
+
+enum BlueprintStatus {
+  draft
+  confirmed
+
+  @@map("blueprint_status")
+}
+
+/// Como se obtuvo la propuesta. Importa para RX-05 y para diagnosticar.
+enum BlueprintOrigin {
+  /// Propuesta por el motor de inferencia.
+  inferred
+  /// Camino determinista de RE-04.
+  fallback
+
+  @@map("blueprint_origin")
+}
+
+enum FieldType {
+  text
+  integer
+  decimal
+  boolean
+  date
+  datetime
+  email
+  phone
+  select
+  relation
+
+  @@map("field_type")
+}
+
+enum EntityOrigin {
+  /// Una hoja completa se convirtio en entidad.
+  sheet
+  /// Salio de los valores repetidos de una columna (RI-02).
+  derived
+
+  @@map("entity_origin")
+}
+
+model Blueprint {
+  id        String  @id @default(uuid())
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String  @unique
+
+  applicationName String
+  status          BlueprintStatus @default(draft)
+  origin          BlueprintOrigin
+  /// Avisos del validador, para poder explicar que se corrigio (RX-05, RX-06).
+  notes           Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entities  BpEntity[]
+  relations BpRelation[]
+
+  @@map("blueprint")
+}
+
+model BpEntity {
+  id          String    @id @default(uuid())
+  blueprint   Blueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  blueprintId String
+
+  name  String
+  label String
+
+  origin           EntityOrigin
+  sourceSheetIndex Int?
+  position         Int          @default(0)
+
+  /// Identificador fisico de la tabla en el schema del proyecto.
+  /// Lo genera la maquina al construir; nunca deriva del texto del usuario
+  /// (ADR 0001). Nulo mientras la aplicacion no se haya creado.
+  tableName String?
+
+  /// Campo que representa al registro en un selector (RF-17).
+  displayField BpField? @relation("displayField", fields: [displayFieldId], references: [id], onDelete: SetNull)
+  displayFieldId String? @unique
+
+  /// Campo que decide si dos filas son el mismo registro (decision 3).
+  dedupeField   BpField? @relation("dedupeField", fields: [dedupeFieldId], references: [id], onDelete: SetNull)
+  dedupeFieldId String?  @unique
+
+  fields        BpField[]     @relation("entityFields")
+  incomingLinks BpField[]     @relation("relationTarget")
+  relationsFrom BpRelation[]  @relation("relationFrom")
+  relationsTo   BpRelation[]  @relation("relationTo")
+
+  @@unique([blueprintId, name])
+  @@index([blueprintId])
+  @@map("bp_entity")
+}
+
+model BpField {
+  id       String   @id @default(uuid())
+  entity   BpEntity @relation("entityFields", fields: [entityId], references: [id], onDelete: Cascade)
+  entityId String
+
+  name     String
+  label    String
+  type     FieldType
+  required Boolean   @default(false)
+  position Int       @default(0)
+  /// Valores permitidos cuando `type` es `select`.
+  options  Json?
+
+  /// Entidad apuntada cuando `type` es `relation`.
+  targetEntity   BpEntity? @relation("relationTarget", fields: [targetEntityId], references: [id], onDelete: Cascade)
+  targetEntityId String?
+
+  /// Trazabilidad RNF-02: columna del archivo de la que sale el campo.
+  sourceSheetIndex  Int?
+  sourceColumnIndex Int?
+
+  /// Identificador fisico de la columna. Ver `BpEntity.tableName`.
+  columnName String?
+
+  /// `false` cuando la persona usuaria lo creo o lo modifico (RX-05).
+  isInferred Boolean @default(true)
+
+  displayFor BpEntity?    @relation("displayField")
+  dedupeFor  BpEntity?    @relation("dedupeField")
+  relations  BpRelation[] @relation("relationField")
+
+  @@unique([entityId, name])
+  @@index([entityId])
+  @@map("bp_field")
+}
+
+enum RelationType {
+  one_to_many
+  many_to_one
+
+  @@map("relation_type")
+}
+
+model BpRelation {
+  id          String    @id @default(uuid())
+  blueprint   Blueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  blueprintId String
+
+  /// Lado "muchos": la entidad que lleva el campo.
+  fromEntity   BpEntity @relation("relationFrom", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  fromEntityId String
+  /// Lado "uno".
+  toEntity   BpEntity @relation("relationTo", fields: [toEntityId], references: [id], onDelete: Cascade)
+  toEntityId String
+
+  /// Campo que materializa la relacion. ERS 12.4 no lo contempla, pero sin el
+  /// no se sabe cual de las tres relaciones de Viajes es cual.
+  field   BpField @relation("relationField", fields: [fieldId], references: [id], onDelete: Cascade)
+  fieldId String  @unique
+
+  type RelationType @default(many_to_one)
+
+  @@unique([blueprintId, fromEntityId, toEntityId, fieldId])
+  @@index([blueprintId])
+  @@map("bp_relation")
+}
+
+// ---------------------------------------------------------------------------
+// Trabajos en segundo plano
+// ---------------------------------------------------------------------------
+
+enum JobKind {
+  analysis
+  build
+  import
+
+  @@map("job_kind")
+}
+
+enum JobStatus {
+  queued
+  running
+  completed
+  /// Termino, pero con parte del trabajo fallida (RE-06).
+  partial
+  failed
+
+  @@map("job_status")
+}
+
+/// Trabajo de larga duracion. La fila sobrevive a recargas y navegacion, que es
+/// lo que necesita la interfaz para RNF-06.
+model Job {
+  id        String  @id @default(uuid())
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  kind   JobKind
+  status JobStatus @default(queued)
+
+  /// Progreso medible cuando se conoce el total; 0 cuando no.
+  progress Int @default(0)
+  total    Int @default(0)
+
+  /// Que esta pasando, en lenguaje de negocio: "Analizando archivo...".
+  message       String?
+  failureReason String?
+
+  /// Resumen final del trabajo: modulos, registros, relaciones (RF-21).
+  result Json?
+
+  rowErrors ImportRowError[]
+
+  startedAt  DateTime?
+  finishedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([projectId, createdAt])
+  @@map("job")
+}
+
+/// Fila del Excel que no se pudo importar (RE-06).
+///
+/// La decision 4 del plan es continuar y reportar: una celda mala no puede
+/// impedir que se importen las otras 49.999 filas. Cada fallo queda aqui con lo
+/// suficiente para que la persona usuaria sepa que arreglar en su archivo.
+model ImportRowError {
+  id    String @id @default(uuid())
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId String
+
+  /// Nombre visible del modulo al que iba la fila.
+  entityLabel String
+  sheetName   String
+  /// Fila dentro de la hoja, tal como la ve la persona en Excel (empieza en 1).
+  rowNumber   Int
+  /// Explicacion en lenguaje de negocio: "La fecha no tiene un formato valido".
+  reason      String
+  /// La fila tal cual venia, para poder localizarla en el archivo.
+  rawRow      Json
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@map("import_row_error")
+}
