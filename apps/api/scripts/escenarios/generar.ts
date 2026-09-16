@@ -23,6 +23,5 @@ for (const [nombre, hojas] of [
   const ruta = await writeWorkbook(destino, nombre, hojas);
   const filas = hojas.reduce((total, hoja) => total + Math.max(0, hoja.rows.length - 1), 0);
   // Es una herramienta de linea de comandos: su salida ES el resultado.
-  // eslint-disable-next-line no-console
-  console.log(`${ruta}  ${hojas.length} hoja(s), ${filas} filas de datos`);
+  process.stdout.write(`${ruta}  ${hojas.length} hoja(s), ${filas} filas de datos\n`);
 }
