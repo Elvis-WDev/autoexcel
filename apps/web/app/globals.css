@@ -1,0 +1,181 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Paleta.
+ *
+ * Neutros calidos y un unico acento verde azulado. Tres decisiones, y las tres
+ * salen de `docs/architecture/interface-design.md`:
+ *
+ *   - No es violeta ni indigo. Esa eleccion por costumbre es el primer indicio
+ *     de una plantilla, y hace que todos los productos se parezcan.
+ *   - El radio maximo es 8px, con jerarquia. Redondear todo al maximo borra la
+ *     informacion que el radio transmite sobre como se agrupan las cosas.
+ *   - Los colores semanticos (exito, aviso, error, informacion) son variables
+ *     propias, para que un estado no cambie de color entre modulos.
+ */
+
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.99 0.002 90);
+  --foreground: oklch(0.22 0.006 75);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.006 75);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.006 75);
+
+  --primary: oklch(0.48 0.09 196);
+  --primary-foreground: oklch(0.99 0.004 190);
+
+  --secondary: oklch(0.96 0.004 85);
+  --secondary-foreground: oklch(0.3 0.008 75);
+
+  --muted: oklch(0.96 0.004 85);
+  --muted-foreground: oklch(0.5 0.008 75);
+
+  --accent: oklch(0.94 0.014 192);
+  --accent-foreground: oklch(0.3 0.03 196);
+
+  --destructive: oklch(0.55 0.19 27);
+  --destructive-foreground: oklch(0.99 0.004 90);
+
+  --success: oklch(0.52 0.12 150);
+  --success-foreground: oklch(0.99 0.004 90);
+  --warning: oklch(0.66 0.13 72);
+  --warning-foreground: oklch(0.22 0.02 72);
+  --info: oklch(0.52 0.1 232);
+  --info-foreground: oklch(0.99 0.004 90);
+
+  --border: oklch(0.9 0.005 85);
+  /* Los campos llevan borde mas oscuro que los separadores: es el limite del
+     control, y WCAG 1.4.11 le exige 3:1. Medido en 3,02:1. */
+  --input: oklch(0.66 0.008 85);
+  --ring: oklch(0.48 0.09 196);
+  /* La barra lateral es una superficie ligeramente hundida, no otro tema. */
+  --sidebar: oklch(0.975 0.003 88);
+  --sidebar-foreground: oklch(0.3 0.007 75);
+  --sidebar-primary: oklch(0.48 0.09 196);
+  --sidebar-primary-foreground: oklch(0.99 0.004 190);
+  --sidebar-accent: oklch(0.93 0.014 192);
+  --sidebar-accent-foreground: oklch(0.3 0.03 196);
+  --sidebar-border: oklch(0.9 0.005 85);
+  --sidebar-ring: oklch(0.48 0.09 196);
+}
+
+.dark {
+  --background: oklch(0.18 0.006 75);
+  --foreground: oklch(0.95 0.004 85);
+
+  --card: oklch(0.22 0.007 75);
+  --card-foreground: oklch(0.95 0.004 85);
+  --popover: oklch(0.22 0.007 75);
+  --popover-foreground: oklch(0.95 0.004 85);
+
+  --primary: oklch(0.72 0.11 192);
+  --primary-foreground: oklch(0.18 0.025 196);
+
+  --secondary: oklch(0.27 0.008 75);
+  --secondary-foreground: oklch(0.95 0.004 85);
+
+  --muted: oklch(0.27 0.008 75);
+  --muted-foreground: oklch(0.68 0.008 85);
+
+  --accent: oklch(0.3 0.026 195);
+  --accent-foreground: oklch(0.9 0.03 192);
+
+  /*
+   * En tema oscuro este rojo hace dos trabajos que tiran en direcciones
+   * opuestas: es el fondo del boton destructivo y es el color del texto de
+   * error sobre la pagina. Un rojo lo bastante oscuro para llevar texto blanco
+   * resulta ilegible como texto; uno lo bastante claro para leerse no contrasta
+   * con el blanco.
+   *
+   * Se resuelve invirtiendo el texto del boton en vez de partir el token:
+   * rojo claro con texto oscuro encima. Medido: 4,81:1 el texto del boton,
+   * 4,96:1 el rojo como texto sobre la pagina.
+   */
+  --destructive: oklch(0.63 0.17 25);
+  --destructive-foreground: oklch(0.2 0.03 25);
+
+  --success: oklch(0.65 0.13 150);
+  --success-foreground: oklch(0.18 0.02 150);
+  --warning: oklch(0.76 0.13 74);
+  --warning-foreground: oklch(0.2 0.02 74);
+  --info: oklch(0.66 0.1 232);
+  --info-foreground: oklch(0.18 0.02 232);
+
+  --border: oklch(0.31 0.008 75);
+  --input: oklch(0.5 0.008 75);
+  --ring: oklch(0.72 0.11 192);
+  --sidebar: oklch(0.21 0.007 75);
+  --sidebar-foreground: oklch(0.92 0.004 85);
+  --sidebar-primary: oklch(0.72 0.11 192);
+  --sidebar-primary-foreground: oklch(0.18 0.025 196);
+  --sidebar-accent: oklch(0.29 0.024 195);
+  --sidebar-accent-foreground: oklch(0.9 0.03 192);
+  --sidebar-border: oklch(0.29 0.008 75);
+  --sidebar-ring: oklch(0.72 0.11 192);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Jerarquia de radios. El mayor es 8px, como pide interface-design.md. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* El foco visible no es opcional: es WCAG 2.1 AA. */
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+}
