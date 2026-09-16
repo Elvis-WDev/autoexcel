@@ -63,14 +63,22 @@ export function createProjectRepository(prisma: PrismaClient): ProjectRepository
     },
 
     async listByOwner(ownerId: string, page: ListPage): Promise<ListResult> {
+      const texto = page.search?.trim();
+      // El mismo `where` para las filas y para el recuento: si difirieran, el
+      // pie diria un total que no corresponde a lo que se ve.
+      const where = {
+        ownerId,
+        ...(texto ? { name: { contains: texto, mode: 'insensitive' as const } } : {}),
+      };
+
       const [rows, total] = await Promise.all([
         prisma.project.findMany({
-          where: { ownerId },
+          where,
           orderBy: { createdAt: 'desc' },
           take: page.limit,
           skip: page.offset,
         }),
-        prisma.project.count({ where: { ownerId } }),
+        prisma.project.count({ where }),
       ]);
 
       return { items: rows.map(toRecord), total };

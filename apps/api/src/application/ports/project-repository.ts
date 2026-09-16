@@ -23,6 +23,13 @@ export interface CreateProjectInput {
 export interface ListPage {
   limit: number;
   offset: number;
+  /**
+   * Texto libre sobre el nombre del proyecto. `null` para no filtrar.
+   *
+   * Filtra en la base y no en el cliente a proposito: una busqueda que solo
+   * mirara la pagina cargada contradiria el total que muestra el pie.
+   */
+  search?: string | null;
 }
 
 export interface ListResult {

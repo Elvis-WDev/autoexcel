@@ -244,3 +244,55 @@ describe('DELETE /api/projects/:id', () => {
     expect(projects.rows).toHaveLength(1);
   });
 });
+
+describe('GET /api/projects?q=', () => {
+  it('filtra por nombre sin distinguir mayusculas ni acentos del teclado', async () => {
+    const harness = createTestHarness();
+    for (const name of ['Gestion de Viajes', 'Control de Stock', 'VIAJES antiguos']) {
+      await request(harness.app).post('/api/projects').send({ name });
+    }
+
+    const response = await request(harness.app).get('/api/projects?q=viajes');
+    const body = response.body as { data: { name: string }[]; meta: { total: number } };
+
+    expect(response.status).toBe(200);
+    expect(body.data.map((p) => p.name).sort()).toEqual(['Gestion de Viajes', 'VIAJES antiguos']);
+  });
+
+  /**
+   * El total tiene que ser el de la busqueda, no el de la coleccion: si no, el
+   * pie de la tabla prometeria paginas que no existen.
+   */
+  it('el total corresponde a lo filtrado', async () => {
+    const harness = createTestHarness();
+    for (const name of ['Uno', 'Dos', 'Tres']) {
+      await request(harness.app).post('/api/projects').send({ name });
+    }
+
+    const response = await request(harness.app).get('/api/projects?q=uno&limit=1');
+
+    expect((response.body as { meta: { total: number } }).meta.total).toBe(1);
+  });
+
+  it('sin coincidencias devuelve una lista vacia, no un error', async () => {
+    const harness = createTestHarness();
+    await request(harness.app).post('/api/projects').send({ name: 'Uno' });
+
+    const response = await request(harness.app).get('/api/projects?q=nada-de-nada');
+
+    expect(response.status).toBe(200);
+    expect((response.body as { data: unknown[] }).data).toEqual([]);
+  });
+
+  it('no deja buscar en los proyectos de otra persona', async () => {
+    const deAlice = createTestHarness();
+    await request(deAlice.app).post('/api/projects').send({ name: 'Secreto de Alice' });
+
+    const deBob = createTestHarness({ user: BOB });
+    deBob.projects.rows.push(...deAlice.projects.rows);
+
+    const response = await request(deBob.app).get('/api/projects?q=secreto');
+
+    expect((response.body as { data: unknown[] }).data).toEqual([]);
+  });
+});

@@ -65,8 +65,13 @@ export function createInMemoryProjectRepository(): InMemoryProjectRepository {
     },
 
     listByOwner(ownerId: string, page: ListPage): Promise<ListResult> {
+      // `mode: 'insensitive'` de Prisma, reproducido: sin esto el doble diria
+      // que la busqueda distingue mayusculas y la base diria que no.
+      const texto = page.search?.trim().toLowerCase();
+
       const owned = rows
         .filter((row) => row.ownerId === ownerId)
+        .filter((row) => (texto ? row.name.toLowerCase().includes(texto) : true))
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       return Promise.resolve({
