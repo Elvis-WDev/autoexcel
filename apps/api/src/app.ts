@@ -31,6 +31,7 @@ import type { Logger } from './infrastructure/logging/logger.js';
 import type { DatabasePools } from './infrastructure/database/pool.js';
 import { accessLog } from './infrastructure/http/access-log.js';
 import { errorHandler, notFoundHandler } from './infrastructure/http/error-handler.js';
+import { normalizeClientAddress } from './infrastructure/http/client-address.js';
 import { requestContext } from './infrastructure/http/request-context.js';
 import { createHealthRouter } from './infrastructure/http/routes/health.routes.js';
 import { createAppRouter } from './infrastructure/http/routes/app.routes.js';
@@ -104,6 +105,11 @@ export function createApp(dependencies: AppDependencies): Express {
   app.use(accessLog(dependencies.logger));
   app.use(helmet());
 
+  /*
+   * Antes del manejador de sesion, y solo para el: lo que el cliente diga sobre
+   * su propia direccion no puede creerse. Ver `client-address.ts`.
+   */
+  app.use('/api/auth', normalizeClientAddress(dependencies.env.AUTH_TRUSTED_PROXIES));
   app.all('/api/auth/*splat', toNodeHandler(dependencies.authHandler));
 
   app.use(express.json({ limit: '1mb' }));

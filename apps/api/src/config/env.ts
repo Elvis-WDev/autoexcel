@@ -84,6 +84,27 @@ export const envSchema = z
      * base de datos no es infinito. Sin cuota, una sola cuenta puede agotar el
      * recurso para todas las demas.
      */
+    /**
+     * Proxies de confianza, en notacion CIDR y separados por comas.
+     *
+     * Vacio por defecto, y es lo correcto: sin esto la API **no cree** ninguna
+     * cabecera `x-forwarded-for` que le llegue, porque la escribe quien envia la
+     * peticion. Se rellena al desplegar detras de un balanceador real, que es
+     * cuando hay alguien de quien fiarse.
+     */
+    AUTH_TRUSTED_PROXIES: z
+      .string()
+      .default('')
+      .transform((value) =>
+        value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      ),
+    /** Intentos de acceso permitidos por cuenta dentro de la ventana. */
+    AUTH_LOGIN_ATTEMPTS: z.coerce.number().int().positive().max(100).default(5),
+    /** Duracion de esa ventana, en minutos. */
+    AUTH_LOGIN_WINDOW_MINUTES: z.coerce.number().int().positive().max(1440).default(15),
     MAX_PROJECTS_PER_USER: z.coerce.number().int().positive().max(1000).default(50),
     /** Analisis por hora y por persona: es el endpoint que cuesta dinero. */
     MAX_ANALYSES_PER_HOUR: z.coerce.number().int().positive().default(20),

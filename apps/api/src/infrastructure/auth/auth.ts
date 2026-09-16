@@ -1,6 +1,8 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import type { SessionReader } from '../../application/ports/session.js';
+import { registrarIntentoDeAcceso } from './login-throttle.js';
 import type { Env } from '../../config/env.js';
 import type { PrismaClient } from '../database/prisma.js';
 
@@ -41,6 +43,52 @@ export function createAuth(prisma: PrismaClient, env: Env, options: AuthOptions 
     },
     advanced: {
       useSecureCookies: env.NODE_ENV === 'production',
+      /**
+       * De quien fiarse al resolver la direccion del cliente.
+       *
+       * Vacio por defecto: sin proxies declarados, `normalizeClientAddress` ya
+       * sustituyo la cabecera por la direccion del socket, asi que aqui no llega
+       * nada que un cliente haya podido escribir.
+       */
+      ipAddress: { trustedProxies: [...env.AUTH_TRUSTED_PROXIES] },
+    },
+
+    hooks: {
+      /**
+       * Limite de intentos **por cuenta**, antes de comprobar la contrasena.
+       *
+       * El limite por IP que trae Better Auth no sirve en este despliegue: la
+       * API no puede conocer la direccion de la persona. Ver el comentario de
+       * `login-throttle.ts`, que lo explica con lo que se midio.
+       */
+      before: createAuthMiddleware((ctx) => {
+        if (ctx.path !== '/sign-in/email') return Promise.resolve();
+
+        const correo = (ctx.body as { email?: unknown } | undefined)?.email;
+        if (typeof correo !== 'string' || correo.length === 0) return Promise.resolve();
+
+        const resultado = registrarIntentoDeAcceso(correo, {
+          intentos: env.AUTH_LOGIN_ATTEMPTS,
+          ventanaMs: env.AUTH_LOGIN_WINDOW_MINUTES * 60_000,
+        });
+
+        if (!resultado.permitido) {
+          /*
+           * El `APIError` de Better Auth, no el `AppError` del dominio: este
+           * hook corre dentro de su manejador, que captura lo que no reconoce y
+           * responde 500. Con su propio error responde 429, y con el codigo que
+           * el panel ya sabe traducir.
+           */
+          throw new APIError('TOO_MANY_REQUESTS', {
+            code: 'TOO_MANY_REQUESTS',
+            message:
+              'Demasiados intentos con esta cuenta. Espera un momento antes de volver a probar.',
+            retryAfter: resultado.reintentarEn,
+          });
+        }
+
+        return Promise.resolve();
+      }),
     },
   });
 }
