@@ -18,7 +18,9 @@
     "db:studio": "prisma studio",
     "bench": "node bench/list-performance.mjs",
     "acceptance:live": "tsx scripts/acceptance-live.ts",
-    "inference:check": "tsx scripts/inference-check.ts"
+    "inference:check": "tsx scripts/inference-check.ts",
+    "dev:demo": "tsx watch scripts/dev-with-demo-proposal.ts",
+    "demo:files": "tsx scripts/demo-files.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
