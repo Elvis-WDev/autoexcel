@@ -1,4 +1,20 @@
 import { z } from 'zod';
+import { NOMBRES_DE_PROVEEDOR } from '../infrastructure/inference/providers/tipos.js';
+import { MODELO_ANTHROPIC } from '../infrastructure/inference/providers/anthropic.js';
+import { MODELO_OPENAI } from '../infrastructure/inference/providers/openai.js';
+import { MODELO_GEMINI } from '../infrastructure/inference/providers/gemini.js';
+
+/**
+ * Una clave que puede no estar.
+ *
+ * `CLAVE=` en un `.env` es lo mismo que no escribir la linea: una cadena vacia
+ * se trata como ausente, o media configuracion a medio rellenar arrancaria
+ * fingiendo estar completa.
+ */
+const claveOpcional = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().min(1).optional(),
+);
 
 /**
  * Configuracion del proceso, validada al arranque.
@@ -58,10 +74,23 @@ export const envSchema = z
      * Una cadena vacia se trata como ausente: `CLAVE=` en un `.env` es lo mismo
      * que no escribir la linea.
      */
-    ANTHROPIC_API_KEY: z.preprocess(
-      (value) => (value === '' ? undefined : value),
-      z.string().min(1).optional(),
-    ),
+    ANTHROPIC_API_KEY: claveOpcional,
+    OPENAI_API_KEY: claveOpcional,
+    GEMINI_API_KEY: claveOpcional,
+
+    /**
+     * Que motor se prueba primero.
+     *
+     * Si falla, se intentan los demas que tengan clave antes de caer al camino
+     * determinista de RE-04. Elegir uno sin clave no es un error de arranque:
+     * simplemente no entra en la lista, y se usan los que si la tengan.
+     */
+    INFERENCE_PROVIDER: z.enum(NOMBRES_DE_PROVEEDOR).default('anthropic'),
+
+    /** Los nombres de modelo caducan; por eso se pueden cambiar sin recompilar. */
+    ANTHROPIC_MODEL: z.string().min(1).default(MODELO_ANTHROPIC),
+    OPENAI_MODEL: z.string().min(1).default(MODELO_OPENAI),
+    GEMINI_MODEL: z.string().min(1).default(MODELO_GEMINI),
 
     /** Directorio de los xlsx subidos. Nunca se sirve estaticamente. */
     STORAGE_DIR: z.string().min(1).default('./storage'),
@@ -120,11 +149,16 @@ export const envSchema = z
     MAX_SHEET_COLUMNS: z.coerce.number().int().positive().max(2000).default(256),
   })
   .superRefine((env, ctx) => {
-    if (env.NODE_ENV === 'production' && !env.ANTHROPIC_API_KEY) {
+    const sinNingunaClave = !env.ANTHROPIC_API_KEY && !env.OPENAI_API_KEY && !env.GEMINI_API_KEY;
+
+    // Antes se exigia la de Anthropic. Ahora vale cualquiera de las tres: lo
+    // que no puede pasar en produccion es quedarse sin inferencia entera.
+    if (env.NODE_ENV === 'production' && sinNingunaClave) {
       ctx.addIssue({
         code: 'custom',
         path: ['ANTHROPIC_API_KEY'],
-        message: 'es obligatoria cuando NODE_ENV=production',
+        message:
+          'hace falta al menos una clave de inferencia (ANTHROPIC_API_KEY, OPENAI_API_KEY o GEMINI_API_KEY) cuando NODE_ENV=production',
       });
     }
     if (env.DATABASE_URL === env.DATABASE_URL_RUNTIME) {

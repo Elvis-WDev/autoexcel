@@ -30,12 +30,26 @@ Excel, sale otra aplicación distinta sin tocar una línea de código.
 | Los 18 criterios del ERS §17 | Verificados tres veces: por HTTP, contra PostgreSQL y **en un navegador real**          |
 | Accesibilidad                | [auditoría completa](docs/quality/frontend-audit.md) del checklist, con sus excepciones |
 
-Sin `ANTHROPIC_API_KEY` el análisis usa la estructura simple de RE-04, así que el producto
-funciona sin IA.
+### El motor de inferencia
 
-Queda una deuda de verificación, y es de entorno: la **calidad** de la propuesta del motor de
-inferencia no se ha comprobado nunca, porque no hay credenciales de Anthropic en esta
-máquina. Su contrato sí está verificado. El procedimiento —ejecutable— está en
+Se elige por entorno con `INFERENCE_PROVIDER`. Los tres se configuran igual: se pone la clave y
+ya está.
+
+| Proveedor   | Clave               | Modelo por defecto  | Se cambia con     |
+| ----------- | ------------------- | ------------------- | ----------------- |
+| `anthropic` | `ANTHROPIC_API_KEY` | `claude-opus-5`     | `ANTHROPIC_MODEL` |
+| `openai`    | `OPENAI_API_KEY`    | `gpt-5.5`           | `OPENAI_MODEL`    |
+| `gemini`    | `GEMINI_API_KEY`    | `gemini-pro-latest` | `GEMINI_MODEL`    |
+
+Si el elegido falla, se intentan **los demás que tengan clave** antes de rendirse. Sin ninguna
+clave el análisis usa la estructura simple de RE-04, así que el producto funciona sin IA —pero
+sin relaciones ni `select`, que son decisiones de modelo y no propiedades de una columna.
+
+Una diferencia que conviene no esconder: solo Anthropic cachea el prefijo de instrucciones, así
+que el mismo análisis cuesta más en los otros dos.
+
+Queda una deuda de verificación, y es de entorno: la **calidad** de la propuesta no se ha
+comprobado con ninguno de los tres, porque no hay credenciales en esta máquina. Su contrato sí está verificado. El procedimiento —ejecutable— está en
 [`docs/quality/inference-manual-check.md`](docs/quality/inference-manual-check.md). El resto
 de deudas conocidas está en [`docs/plans/technical-debt.md`](docs/plans/technical-debt.md).
 

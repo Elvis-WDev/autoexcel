@@ -14,7 +14,8 @@ import {
 import { createBlueprintRepository } from './infrastructure/database/blueprint.repository.js';
 import { createJobRepository } from './infrastructure/database/job.repository.js';
 import { createSourceFileRepository } from './infrastructure/database/source-file.repository.js';
-import { createClaudeProposer } from './infrastructure/inference/claude-proposer.js';
+import { createProposer } from './infrastructure/inference/proposer.js';
+import { construirProveedores } from './infrastructure/inference/providers/registro.js';
 import { spreadsheetUpload } from './infrastructure/http/upload.js';
 import { createExcelJsReader } from './infrastructure/spreadsheet/exceljs-reader.js';
 import { detectFileKind } from './infrastructure/storage/file-signature.js';
@@ -110,14 +111,39 @@ export function compose(
     maxColumnsPerSheet: env.MAX_SHEET_COLUMNS,
   };
 
-  // Sin clave configurada no hay motor de inferencia, y el analisis usa el
-  // camino determinista de RE-04. Arrancar igualmente es deliberado: el resto
-  // del producto funciona sin IA.
+  /**
+   * Los proveedores de inferencia, en el orden en que se prueban.
+   *
+   * Sin ninguna clave configurada no hay motor y el analisis usa el camino
+   * determinista de RE-04. Arrancar igualmente es deliberado: el resto del
+   * producto funciona sin IA.
+   */
+  const proveedores = construirProveedores({
+    preferido: env.INFERENCE_PROVIDER,
+    claves: {
+      anthropic: env.ANTHROPIC_API_KEY,
+      openai: env.OPENAI_API_KEY,
+      gemini: env.GEMINI_API_KEY,
+    },
+    modelos: {
+      anthropic: env.ANTHROPIC_MODEL,
+      openai: env.OPENAI_MODEL,
+      gemini: env.GEMINI_MODEL,
+    },
+    logger,
+  });
+
+  if (overrides.proposer === undefined && proveedores.length > 0) {
+    logger.info('Motor de inferencia configurado', {
+      orden: proveedores.map((proveedor) => `${proveedor.nombre}:${proveedor.modelo}`),
+    });
+  }
+
   const proposer =
     overrides.proposer !== undefined
       ? overrides.proposer
-      : env.ANTHROPIC_API_KEY
-        ? createClaudeProposer({ apiKey: env.ANTHROPIC_API_KEY, logger })
+      : proveedores.length > 0
+        ? createProposer(proveedores, logger)
         : null;
 
   // La importacion corre con el mismo rol que creo el schema.

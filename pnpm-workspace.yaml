@@ -12,3 +12,8 @@ allowBuilds:
   better-sqlite3: false
   msgpackr-extract: false
   workerd: false
+  # Los SDK de inferencia: ninguno de los dos declara `install` ni `postinstall`.
+  # Lo que pnpm quiere aprobar son scripts de desarrollo del propio paquete
+  # —`build`, `prepare`— que no hacen falta para consumirlo desde el registro.
+  '@google/genai': false
+  protobufjs: false

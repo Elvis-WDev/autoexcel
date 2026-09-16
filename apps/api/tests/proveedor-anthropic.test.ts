@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalysisInput } from '../src/domain/blueprint/analysis-input.js';
-import { createClaudeProposer } from '../src/infrastructure/inference/claude-proposer.js';
+import { INPUT, VALID_RESPONSE } from './helpers/inference-fixture.js';
+import { createProposer } from '../src/infrastructure/inference/proposer.js';
+import {
+  crearProveedorAnthropic,
+  MODELO_ANTHROPIC,
+} from '../src/infrastructure/inference/providers/anthropic.js';
 import { createSilentLogger } from '../src/infrastructure/logging/logger.js';
 
 /**
@@ -20,7 +25,7 @@ interface CapturedRequest {
 }
 
 function proposerWithFakeTransport(responseJson: unknown): {
-  proposer: ReturnType<typeof createClaudeProposer>;
+  proposer: ReturnType<typeof createProposer>;
   captured: CapturedRequest[];
 } {
   const captured: CapturedRequest[] = [];
@@ -52,74 +57,22 @@ function proposerWithFakeTransport(responseJson: unknown): {
     );
   };
 
-  const proposer = createClaudeProposer({
-    apiKey: 'sk-ant-de-prueba',
-    logger: createSilentLogger(),
-    // El SDK admite un transporte propio: no hace falta parchear nada global.
-    fetch: fakeFetch,
-  });
+  const logger = createSilentLogger();
+  const proposer = createProposer(
+    [
+      crearProveedorAnthropic({
+        apiKey: 'sk-ant-de-prueba',
+        modelo: MODELO_ANTHROPIC,
+        logger,
+        // El SDK admite un transporte propio: no hace falta parchear nada global.
+        fetch: fakeFetch,
+      }),
+    ],
+    logger,
+  );
 
   return { proposer, captured };
 }
-
-const INPUT: AnalysisInput = {
-  fileName: 'viajes.xlsx',
-  sheets: [
-    {
-      index: 0,
-      name: 'Viajes',
-      rowCount: 400,
-      columns: [
-        {
-          index: 0,
-          header: 'Cliente',
-          normalizedHeader: 'cliente',
-          profile: {
-            total: 400,
-            empty: 0,
-            distinct: 3,
-            cardinalityRatio: 0.0075,
-            samples: ['Comercial Andes', 'Cliente Norte'],
-            inferredType: 'text',
-            typeConfidence: 1,
-            maxLength: 20,
-            repeatsEnoughForEntity: true,
-            identifying: false,
-            identityCandidate: false,
-          },
-        },
-      ],
-    },
-  ],
-  overlaps: [],
-};
-
-const VALID_RESPONSE = {
-  applicationName: 'Gestion de Viajes',
-  entities: [
-    {
-      name: 'clientes',
-      label: 'Clientes',
-      origin: 'derived',
-      sourceSheetIndex: 0,
-      displayField: 'nombre',
-      dedupeField: 'nombre',
-      fields: [
-        {
-          name: 'nombre',
-          label: 'Cliente',
-          type: 'text',
-          required: true,
-          options: null,
-          targetEntity: null,
-          sourceSheetIndex: 0,
-          sourceColumnIndex: 0,
-        },
-      ],
-    },
-  ],
-  relations: [],
-};
 
 describe('motor de inferencia sobre Claude', () => {
   it('pide el modelo y los parametros esperados', async () => {
