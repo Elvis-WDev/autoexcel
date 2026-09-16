@@ -2,6 +2,8 @@ import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
+import reactHooks from 'eslint-plugin-react-hooks';
+import next from '@next/eslint-plugin-next';
 
 export default tseslint.config(
   {
@@ -14,6 +16,9 @@ export default tseslint.config(
       'apps/api/bench/**',
       // Cliente de Prisma: generado por script, nunca editado a mano.
       'apps/api/src/infrastructure/database/generated/**',
+      // Salida de Next.
+      'apps/web/.next/**',
+      'apps/web/next-env.d.ts',
     ],
   },
   js.configs.recommended,
@@ -72,7 +77,37 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.config.*', '**/*.test.ts', '**/tests/**/*.ts'],
+    /**
+     * El panel.
+     *
+     * Dos diferencias con el backend, y solo dos: aqui hay navegador, asi que
+     * entran sus globales; y hay React, asi que entran las reglas que evitan los
+     * fallos que el compilador no ve —dependencias de efectos, hooks bajo una
+     * condicion— mas las de Next.
+     */
+    files: ['apps/web/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks, '@next/next': next },
+    // Sin esto, el plugin busca `pages/` en la raiz del monorepo y avisa.
+    settings: { next: { rootDir: 'apps/web' } },
+    languageOptions: {
+      globals: { ...globals.browser },
+    },
+    rules: {
+      ...reactHooks.configs['recommended-latest'].rules,
+      ...next.configs.recommended.rules,
+      ...next.configs['core-web-vitals'].rules,
+      /**
+       * Un manejador de React devuelve `void`, y pasarle una funcion `async`
+       * es habitual y correcto. La regla sigue vigilando el resto.
+       */
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        { checksVoidReturn: { attributes: false } },
+      ],
+    },
+  },
+  {
+    files: ['**/*.config.*', '**/*.test.ts', '**/*.test.tsx', '**/tests/**/*.ts'],
     rules: {
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',

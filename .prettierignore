@@ -5,3 +5,6 @@ pnpm-lock.yaml
 storage
 apps/api/src/infrastructure/database/generated
 apps/api/bench
+.next
+apps/web/.next
+next-env.d.ts

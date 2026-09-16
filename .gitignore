@@ -6,6 +6,8 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+.next/
+next-env.d.ts
 
 # Cliente generado por Prisma
 apps/api/src/infrastructure/database/generated/
