@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Cliente generado por Prisma
+apps/api/src/infrastructure/database/generated/
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Almacenamiento local de archivos subidos
+storage/
+
+# Herramientas
+coverage/
+.vitest/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / SO
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,14 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Que dependencias pueden ejecutar scripts de instalacion. pnpm 11 usa esta
+# clave; `onlyBuiltDependencies` es de la 10 y aqui se ignora en silencio.
+allowBuilds:
+  esbuild: true
+  prisma: true
+  '@prisma/engines': true
+  # Opcionales que arrastra better-auth y que no usamos.
+  better-sqlite3: false
+  msgpackr-extract: false
+  workerd: false
