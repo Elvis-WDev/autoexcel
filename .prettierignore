@@ -8,3 +8,7 @@ apps/api/bench
 .next
 apps/web/.next
 next-env.d.ts
+
+# Artefactos de Playwright
+apps/web/e2e/informe
+apps/web/test-results

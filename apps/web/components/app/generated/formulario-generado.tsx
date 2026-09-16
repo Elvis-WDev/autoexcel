@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { z } from 'zod';
 import { FormDialog } from '@/components/app/form-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { TriangleAlert } from 'lucide-react';
 import type { ModuloDelManifiesto, Registro } from '@/lib/api/aplicacion';
 import { renderizadorDe } from '@/lib/aplicacion/campos';
 
@@ -28,6 +31,31 @@ export interface FormularioGeneradoProps {
   guardando: boolean;
   /** Errores por campo que devolvio el servidor, si los localizo. */
   erroresDelServidor?: Record<string, string>;
+  /**
+   * El registro todavia viene en camino.
+   *
+   * Se dibuja el esqueleto y no los campos vacios: un formulario que se rellena
+   * solo delante de quien mira invita a escribir sobre lo que esta a punto de
+   * ser sustituido.
+   */
+  cargando?: boolean;
+  /** Por que no se pudo traer el registro. Si llega, no hay nada que guardar. */
+  errorAlCargar?: string | null;
+}
+
+/** Tantos huecos como campos va a haber: el dialogo no cambia de alto al llegar. */
+function Esqueleto({ campos }: { campos: number }): React.ReactElement {
+  return (
+    <div aria-busy="true" aria-live="polite" className="space-y-4">
+      <span className="sr-only">Cargando el registro...</span>
+      {Array.from({ length: campos }, (_, indice) => (
+        <div className="space-y-2" key={indice}>
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function valoresIniciales(
@@ -60,6 +88,8 @@ export function FormularioGenerado({
   onGuardar,
   guardando,
   erroresDelServidor = {},
+  cargando = false,
+  errorAlCargar = null,
 }: FormularioGeneradoProps): React.ReactElement {
   const [valores, setValores] = useState(() => valoresIniciales(modulo, registro));
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -70,7 +100,7 @@ export function FormularioGenerado({
    * Ajustado durante el renderizado y no en un efecto: con un efecto se veria un
    * instante el registro anterior dentro del dialogo del siguiente.
    */
-  const identidad = `${abierto ? 'abierto' : 'cerrado'}:${registro?.id ?? 'nuevo'}`;
+  const identidad = `${abierto ? 'abierto' : 'cerrado'}:${registro?.id ?? 'nuevo'}:${cargando ? 'esperando' : 'listo'}`;
   const [identidadPrevia, setIdentidadPrevia] = useState(identidad);
   if (identidad !== identidadPrevia) {
     setIdentidadPrevia(identidad);
@@ -102,25 +132,42 @@ export function FormularioGenerado({
 
   const singular = modulo.label.replace(/s$/i, '');
 
+  // Mientras el registro viene en camino no hay `registro`, pero el dialogo ya
+  // es el de editar: el titulo no puede decir "Nuevo" y cambiar al llegar.
+  const esEdicion = registro !== null || cargando || errorAlCargar !== null;
+  const hayFormulario = !cargando && errorAlCargar === null;
+
   return (
     <FormDialog
       abierto={abierto}
       guardando={guardando}
       onAbiertoChange={onAbiertoChange}
       onSubmit={enviar}
-      textoDeAccion={registro ? 'Guardar' : `Crear ${singular.toLowerCase()}`}
-      titulo={registro ? `Editar ${singular.toLowerCase()}` : `Nuevo ${singular.toLowerCase()}`}
+      puedeGuardar={hayFormulario}
+      textoDeAccion={esEdicion ? 'Guardar' : `Crear ${singular.toLowerCase()}`}
+      titulo={esEdicion ? `Editar ${singular.toLowerCase()}` : `Nuevo ${singular.toLowerCase()}`}
     >
-      {modulo.fields.map((campo) =>
-        renderizadorDe(campo.type).control({
-          campo,
-          disabled: guardando,
-          error: errores[campo.name] ?? erroresDelServidor[campo.name],
-          onChange: (valor) => setValores((previo) => ({ ...previo, [campo.name]: valor })),
-          proyectoId,
-          valor: valores[campo.name],
-        }),
-      )}
+      {cargando ? <Esqueleto campos={modulo.fields.length} /> : null}
+
+      {errorAlCargar ? (
+        <Alert variant="destructive">
+          <TriangleAlert aria-hidden className="size-4" />
+          <AlertTitle>No se pudo abrir</AlertTitle>
+          <AlertDescription>{errorAlCargar}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {hayFormulario &&
+        modulo.fields.map((campo) =>
+          renderizadorDe(campo.type).control({
+            campo,
+            disabled: guardando,
+            error: errores[campo.name] ?? erroresDelServidor[campo.name],
+            onChange: (valor) => setValores((previo) => ({ ...previo, [campo.name]: valor })),
+            proyectoId,
+            valor: valores[campo.name],
+          }),
+        )}
     </FormDialog>
   );
 }

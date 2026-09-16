@@ -152,6 +152,15 @@ export const clavesDeLaAplicacion = {
   modulo: (proyectoId: string, modulo: string) => ['app', proyectoId, modulo] as const,
   registros: (proyectoId: string, modulo: string, consulta: ConsultaDeRegistros) =>
     ['app', proyectoId, modulo, 'registros', consulta] as const,
+  /**
+   * Un registro suelto, pedido por su identificador.
+   *
+   * Cuelga de `modulo`, asi que la invalidacion que sigue a cualquier mutacion
+   * tambien lo alcanza. Quien lo consulte para editar debe pedirlo fresco: la
+   * copia que trae la lista puede tener la edad de `staleTime`.
+   */
+  registro: (proyectoId: string, modulo: string, registroId: string) =>
+    ['app', proyectoId, modulo, 'registro', registroId] as const,
   opciones: (proyectoId: string, modulo: string) =>
     ['app', proyectoId, modulo, 'opciones'] as const,
 };

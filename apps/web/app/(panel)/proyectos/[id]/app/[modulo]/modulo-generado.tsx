@@ -16,10 +16,13 @@ import {
   crearRegistro,
   eliminarRegistro,
   listarRegistros,
+  obtenerRegistro,
   type ModuloDelManifiesto,
   type Registro,
 } from '@/lib/api/aplicacion';
 import { renderizadorDe } from '@/lib/aplicacion/campos';
+import { ApiError } from '@/lib/api/errors';
+import { mensajeDeError } from '@/lib/api/mensajes';
 
 /**
  * V13 — Un modulo de la aplicacion generada.
@@ -42,7 +45,7 @@ export function ModuloGenerado({
 }): React.ReactElement {
   const { estado, setBusqueda, setOrden, setPagina, setTamano, limpiar } = useEstadoDeTablaEnUrl();
 
-  const [editando, setEditando] = useState<Registro | null>(null);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [aEliminar, setAEliminar] = useState<Registro | null>(null);
 
@@ -62,6 +65,43 @@ export function ModuloGenerado({
   const invalidar = [clavesDeLaAplicacion.modulo(proyectoId, modulo.name)];
   const singular = modulo.label.replace(/s$/i, '').toLowerCase();
 
+  /**
+   * El registro que se va a editar, pedido a la fuente autoritativa.
+   *
+   * No se reutiliza la fila de la lista. Puede tener la edad de `staleTime` —30
+   * segundos— y `PATCH` manda solo los campos del formulario: editar sobre una
+   * copia vieja reenvia valores caducados y pisa lo que otra persona acabe de
+   * cambiar. `staleTime` y `gcTime` a cero porque el sentido de esta consulta es
+   * precisamente no servir una copia.
+   */
+  const enEdicion = useQuery({
+    queryKey: clavesDeLaAplicacion.registro(proyectoId, modulo.name, editandoId ?? ''),
+    queryFn: ({ signal }) => obtenerRegistro(proyectoId, modulo.name, editandoId ?? '', signal),
+    enabled: editandoId !== null,
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  /**
+   * Lo que se dice cuando el registro no se pudo traer.
+   *
+   * Se muestra **dentro del dialogo** y no como aviso flotante: un aviso que
+   * aparece mientras el dialogo se desvanece es facil de no ver, y aqui hay que
+   * verlo. Con esto el boton de guardar queda inhabilitado, que es lo que de
+   * verdad importa: no se puede guardar contra algo que no esta.
+   */
+  const falloAlAbrir = ((): string | null => {
+    const fallo = enEdicion.error;
+    if (!fallo) return null;
+
+    // El interceptor de sesion ya esta llevando a la pantalla de entrada.
+    if (fallo instanceof ApiError && fallo.code === 'UNAUTHENTICATED') return null;
+
+    return fallo instanceof ApiError && fallo.code === 'NOT_FOUND'
+      ? `Este ${singular} ya no existe: alguien lo elimino mientras lo abrias.`
+      : mensajeDeError(fallo);
+  })();
+
   const crear = useMutationFeedback({
     mutationFn: (valores: Record<string, unknown>) =>
       crearRegistro(proyectoId, modulo.name, valores),
@@ -75,7 +115,7 @@ export function ModuloGenerado({
       actualizarRegistro(proyectoId, modulo.name, id, valores),
     success: 'Cambios guardados.',
     invalidate: invalidar,
-    onSuccess: () => setEditando(null),
+    onSuccess: () => setEditandoId(null),
   });
 
   const borrar = useMutationFeedback({
@@ -130,7 +170,7 @@ export function ModuloGenerado({
             <RowActionButton
               etiqueta="Editar"
               icono={Pencil}
-              onClick={() => setEditando(registro)}
+              onClick={() => setEditandoId(registro.id)}
             />
             <RowActionButton
               destructiva
@@ -148,7 +188,7 @@ export function ModuloGenerado({
         filtrosActivos={buscando}
         getRowId={(registro) => registro.id}
         onBusquedaChange={setBusqueda}
-        onFilaClick={(registro) => setEditando(registro)}
+        onFilaClick={(registro) => setEditandoId(registro.id)}
         onLimpiarFiltros={limpiar}
         onOrdenChange={setOrden}
         onPaginaChange={setPagina}
@@ -194,17 +234,19 @@ export function ModuloGenerado({
       />
 
       <FormularioGenerado
-        abierto={editando !== null}
+        abierto={editandoId !== null}
+        cargando={enEdicion.isPending}
+        errorAlCargar={falloAlAbrir}
         guardando={actualizar.isPending}
         modulo={modulo}
         onAbiertoChange={(abierto) => {
-          if (!abierto) setEditando(null);
+          if (!abierto) setEditandoId(null);
         }}
         onGuardar={(valores) => {
-          if (editando) actualizar.mutate({ id: editando.id, valores });
+          if (editandoId) actualizar.mutate({ id: editandoId, valores });
         }}
         proyectoId={proyectoId}
-        registro={editando}
+        registro={enEdicion.data ?? null}
       />
 
       <ConfirmDialog

@@ -319,6 +319,51 @@ test.describe('Los 18 criterios del MVP, desde el navegador', () => {
       await expect(page.getByRole('cell', { name: '1.234,56' }).first()).toBeVisible(ESPERA_LARGA);
     });
 
+    /*
+     * C2: editar se hace sobre la fuente autoritativa.
+     *
+     * La fila que pinta la tabla puede tener la edad de `staleTime`, y `PATCH`
+     * manda los campos del formulario: abrir sobre una copia vieja reenvia
+     * valores caducados y pisa lo que otra persona acabe de cambiar.
+     */
+    await test.step('abrir la edicion pide el registro al servidor', async () => {
+      const peticion = page.waitForRequest(
+        (r) => /\/records\/[^/?]+$/.test(new URL(r.url()).pathname) && r.method() === 'GET',
+      );
+
+      await page.getByRole('button', { name: 'Editar' }).first().click();
+      await peticion;
+
+      await expect(page.getByRole('dialog').getByLabel(/Valor/)).toBeVisible();
+      await page.getByRole('button', { name: 'Cancelar' }).click();
+    });
+
+    await test.step('si el registro desaparecio, se dice y no se puede guardar', async () => {
+      // Se simula que otra persona lo borro entre la lista y el clic.
+      await page.route(/\/records\/[^/?]+$/, async (ruta) => {
+        if (ruta.request().method() !== 'GET') return ruta.fallback();
+
+        await ruta.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: { code: 'NOT_FOUND', message: 'No se encontro el registro.' },
+          }),
+        });
+      });
+
+      await page.getByRole('button', { name: 'Editar' }).first().click();
+
+      const dialogo = page.getByRole('dialog');
+      await expect(dialogo.getByText(/ya no existe/i)).toBeVisible(ESPERA_LARGA);
+      await expect(dialogo.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+      await expect(dialogo.getByLabel(/Valor/)).toBeHidden();
+
+      await page.unroute(/\/records\/[^/?]+$/);
+      await page.getByRole('button', { name: 'Cancelar' }).click();
+      await expect(dialogo).toBeHidden();
+    });
+
     // --- CA-18 ------------------------------------------------------
     await test.step('CA-18 · nada de esto exigio escribir codigo', async () => {
       const texto = (await page.locator('body').innerText()).replace(/\s+/g, ' ');

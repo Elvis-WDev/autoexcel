@@ -174,7 +174,7 @@ cada pulsación, porque reformatear a media palabra movería el cursor.
 Comprobado en navegador dentro de la aceptación: se reabre el registro recién guardado, se afirma
 que el control trae `1.234,56` y se vuelve a enviar ese texto tal cual.
 
-## C2 — La edición desde la fuente autoritativa
+## C2 — La edición desde la fuente autoritativa ✅ completada (2026-09-16)
 
 **Objetivo.** Que editar no sobrescriba con datos viejos.
 
@@ -192,6 +192,23 @@ diálogo se precarga con la fila cacheada de la lista, que puede tener treinta s
 
 **Verificación.** Abrir la edición y comprobar que se pide al servidor. Simular que el
 registro desapareció y comprobar el mensaje.
+
+**Cerrada.** El diálogo ya no recibe la fila cacheada: guarda solo el identificador y pide el
+registro con `obtenerRegistro`, con `staleTime` y `gcTime` a cero, porque el sentido de esa
+consulta es precisamente no servir una copia.
+
+**Se cambió una decisión del plan.** Decía "se dice y se cierra"; el mensaje se muestra **dentro
+del diálogo** y no como aviso flotante. Dos razones. La primera es de la persona: un aviso que
+aparece mientras el diálogo se desvanece es fácil de no ver, y esto hay que verlo. La segunda la
+encontró el linter —`react-hooks/set-state-in-effect`—, y tenía razón: cerrar desde un efecto
+obligaba a un `setState` que el resto del panel evita; aquí todo queda derivado del estado de la
+consulta. Lo que el plan de verdad pedía —que no se pueda guardar contra algo que no está— se
+cumple igual: el botón de guardar queda inhabilitado y no hay campos que enviar.
+
+Verificado en los dos niveles. Siete pruebas de componente sobre los tres estados del diálogo
+—esqueleto, registro cargado, registro desaparecido— y dos pasos en el navegador: uno espera la
+petición `GET .../records/:id` al abrir, y el otro intercepta esa ruta con un 404 y comprueba el
+mensaje y el botón inhabilitado.
 
 ## C3 — Los bytes nulos y la limpieza
 
