@@ -1,0 +1,46 @@
+{
+  "name": "@app/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "bench": "node bench/list-performance.mjs",
+    "acceptance:live": "tsx scripts/acceptance-live.ts",
+    "inference:check": "tsx scripts/inference-check.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "better-auth": "^1.7.5",
+    "exceljs": "^4.4.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "multer": "^2.4.0",
+    "pg": "^8.16.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^24.9.1",
+    "@types/pg": "^8.15.5",
+    "@types/supertest": "^6.0.3",
+    "prisma": "7.10.0",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "vitest": "^3.2.4"
+  }
+}
