@@ -17,19 +17,27 @@ No genera código. La unidad del producto es **la estructura de la información*
 
 ## Estado
 
-**Backend completo: F0 a F9.** Cargar un Excel produce una aplicación usable —navegación,
-tablas, formularios, selectores de relación— sobre una base de datos real con los datos
-dentro, deduplicados y relacionados. Sin `ANTHROPIC_API_KEY` el análisis usa la estructura
-simple de RE-04, así que el producto funciona sin IA.
+**Backend y panel completos.** Subes un Excel, el sistema propone un modelo, lo corriges y
+lo confirmas, y acabas usando una aplicación de gestión real —tablas, formularios,
+selectores de relación— con tus datos dentro, deduplicados y enlazados. Si mañana subes otro
+Excel, sale otra aplicación distinta sin tocar una línea de código.
 
-Los 18 criterios de aceptación del ERS §17 están automatizados en
-`apps/api/tests/acceptance.test.ts`, y los mismos criterios se verifican contra PostgreSQL
-real con `corepack pnpm --filter @app/api acceptance:live` (15/15).
+|                              |                                                                                         |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| Backend                      | F0–F9 · [plan](docs/plans/active/backend-mvp.md)                                        |
+| Panel                        | W0–W9 · [plan](docs/plans/active/frontend-mvp.md)                                       |
+| Tests                        | 366 en la API, 182 en el panel                                                          |
+| Los 18 criterios del ERS §17 | Verificados tres veces: por HTTP, contra PostgreSQL y **en un navegador real**          |
+| Accesibilidad                | [auditoría completa](docs/quality/frontend-audit.md) del checklist, con sus excepciones |
 
-Queda una deuda de verificación, y es de entorno: la **calidad** de la propuesta del motor
-de inferencia no se ha comprobado nunca, porque no hay credenciales de Anthropic en esta
+Sin `ANTHROPIC_API_KEY` el análisis usa la estructura simple de RE-04, así que el producto
+funciona sin IA.
+
+Queda una deuda de verificación, y es de entorno: la **calidad** de la propuesta del motor de
+inferencia no se ha comprobado nunca, porque no hay credenciales de Anthropic en esta
 máquina. Su contrato sí está verificado. El procedimiento —ejecutable— está en
-[`docs/quality/inference-manual-check.md`](docs/quality/inference-manual-check.md).
+[`docs/quality/inference-manual-check.md`](docs/quality/inference-manual-check.md). El resto
+de deudas conocidas está en [`docs/plans/technical-debt.md`](docs/plans/technical-debt.md).
 
 ## Requisitos
 
