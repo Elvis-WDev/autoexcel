@@ -37,9 +37,15 @@ function valoresIniciales(
   const valores: Record<string, unknown> = {};
 
   for (const campo of modulo.fields) {
-    valores[campo.name] = registro
-      ? (registro.values[campo.name] ?? null)
-      : renderizadorDe(campo.type).inicial(campo);
+    const renderizador = renderizadorDe(campo.type);
+
+    if (!registro) {
+      valores[campo.name] = renderizador.inicial(campo);
+      continue;
+    }
+
+    const guardado = registro.values[campo.name] ?? null;
+    valores[campo.name] = renderizador.hidratar ? renderizador.hidratar(guardado) : guardado;
   }
 
   return valores;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseHumanNumber } from '../numbers.js';
 import type { RuntimeEntity, RuntimeField } from './application.js';
 
 /**
@@ -15,6 +16,31 @@ import type { RuntimeEntity, RuntimeField } from './application.js';
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Un numero, escrito como lo escribe una persona.
+ *
+ * Antes era `z.coerce.number()`, que solo entiende el punto decimal. Eso hacia
+ * que el producto se contradijera: la importacion aceptaba `1.234,56`, la tabla
+ * lo mostraba asi, y ese mismo texto en el formulario daba "debe ser un numero".
+ *
+ * Se acepta tambien un `number` ya canonico, porque un cliente que no sea el
+ * panel enviara eso y seria absurdo obligarle a convertirlo a texto.
+ */
+function humanNumber(label: string): z.ZodType<number> {
+  return z
+    .union([z.number(), z.string()], { error: `"${label}" debe ser un numero.` })
+    .transform((valor, ctx) => {
+      const parsed = typeof valor === 'number' ? valor : parseHumanNumber(valor);
+
+      if (parsed === null || !Number.isFinite(parsed)) {
+        ctx.addIssue({ code: 'custom', message: `"${label}" debe ser un numero.` });
+        return z.NEVER;
+      }
+
+      return parsed;
+    });
+}
+
 function schemaForField(field: RuntimeField): z.ZodTypeAny {
   const label = field.label;
 
@@ -29,12 +55,19 @@ function schemaForField(field: RuntimeField): z.ZodTypeAny {
       return z.string({ error: `"${label}" debe ser texto.` }).max(40);
 
     case 'integer':
-      return z.coerce
-        .number({ error: `"${label}" debe ser un numero.` })
-        .int(`"${label}" debe ser un numero entero.`);
+      /*
+       * Rechaza los decimales en vez de redondearlos, al reves que la
+       * importacion. No es un descuido: un `350.0` guardado por Excel es un
+       * detalle de como Excel guarda, pero un `350,7` escrito en un formulario
+       * es lo que alguien quiso poner, y cambiarselo en silencio es peor que
+       * decirselo.
+       */
+      return humanNumber(label).refine(Number.isInteger, {
+        error: `"${label}" debe ser un numero entero.`,
+      });
 
     case 'decimal':
-      return z.coerce.number({ error: `"${label}" debe ser un numero.` });
+      return humanNumber(label);
 
     case 'boolean':
       return z.boolean({ error: `"${label}" debe ser si o no.` });

@@ -296,6 +296,29 @@ test.describe('Los 18 criterios del MVP, desde el navegador', () => {
       await expect(page.getByRole('cell', { name: '1.234,56' }).first()).toBeVisible(ESPERA_LARGA);
     });
 
+    /*
+     * El caso que motivo C1.
+     *
+     * La tabla mostraba `1.234,56` y ese mismo texto, escrito en el campo, daba
+     * "debe ser un numero": la pantalla contradecia a la pantalla. Se comprueba
+     * de la unica forma que lo demuestra: reabriendo el registro que se acaba de
+     * guardar y volviendo a enviar lo que el control ya trae escrito.
+     */
+    await test.step('lo que la tabla muestra es lo que el formulario acepta', async () => {
+      await page.getByRole('button', { name: 'Editar' }).first().click();
+
+      const dialogo = page.getByRole('dialog');
+      const valor = dialogo.getByLabel(/Valor/);
+
+      // El control se abre diciendo lo mismo que la celda, no `1234.56`.
+      await expect(valor).toHaveValue('1.234,56');
+
+      // Y ese texto, tal cual, se acepta y vuelve a la tabla intacto.
+      await dialogo.getByRole('button', { name: 'Guardar' }).click();
+      await expect(dialogo).toBeHidden(ESPERA_LARGA);
+      await expect(page.getByRole('cell', { name: '1.234,56' }).first()).toBeVisible(ESPERA_LARGA);
+    });
+
     // --- CA-18 ------------------------------------------------------
     await test.step('CA-18 · nada de esto exigio escribir codigo', async () => {
       const texto = (await page.locator('body').innerText()).replace(/\s+/g, ' ');

@@ -1,5 +1,6 @@
 import type { FieldType } from '../blueprint/types.js';
 import { isBlank, toText, type CellValue } from '../spreadsheet/cell.js';
+import { parseHumanNumber } from '../numbers.js';
 import { normalizeText } from '../spreadsheet/normalization.js';
 
 /**
@@ -74,7 +75,7 @@ function coerceInteger(raw: CellValue, label: string): Coercion {
   const text = toText(raw).replace(/\s/g, '');
   if (INTEGER.test(text)) return { ok: true, value: Number.parseInt(text, 10) };
 
-  const asDecimal = parseDecimalText(text);
+  const asDecimal = parseHumanNumber(text);
   if (asDecimal !== null) return { ok: true, value: Math.round(asDecimal) };
 
   return { ok: false, reason: `"${label}" deberia ser un numero entero, y trae "${short(raw)}".` };
@@ -86,37 +87,10 @@ function coerceDecimal(raw: CellValue, label: string): Coercion {
     return { ok: true, value: raw };
   }
 
-  const parsed = parseDecimalText(toText(raw).replace(/\s/g, ''));
+  const parsed = parseHumanNumber(toText(raw));
   if (parsed !== null) return { ok: true, value: parsed };
 
   return { ok: false, reason: `"${label}" deberia ser un numero, y trae "${short(raw)}".` };
-}
-
-/**
- * Acepta la coma decimal y el punto de millares, que es como escribe la mitad
- * del mundo: `1.234,56` y `1,234.56` valen lo mismo.
- */
-function parseDecimalText(text: string): number | null {
-  if (text.length === 0) return null;
-
-  const cleaned = text.replace(/[^\d,.+-]/g, '');
-  if (cleaned.length === 0) return null;
-
-  const lastComma = cleaned.lastIndexOf(',');
-  const lastDot = cleaned.lastIndexOf('.');
-
-  let normalized: string;
-  if (lastComma > lastDot) {
-    // La coma es el separador decimal: los puntos son de millares.
-    normalized = cleaned.replace(/\./g, '').replace(',', '.');
-  } else if (lastDot > lastComma) {
-    normalized = cleaned.replace(/,/g, '');
-  } else {
-    normalized = cleaned;
-  }
-
-  const value = Number(normalized);
-  return Number.isFinite(value) ? value : null;
 }
 
 function coerceBoolean(raw: CellValue, label: string): Coercion {

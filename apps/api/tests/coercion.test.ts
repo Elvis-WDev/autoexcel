@@ -164,3 +164,17 @@ describe('texto', () => {
     expect(reason).toContain('...');
   });
 });
+
+describe('el formulario y la importacion leen el mismo numero', () => {
+  /**
+   * La contradiccion que motivo C1: la tabla mostraba `1.234,56` y ese mismo
+   * texto, escrito en el formulario, daba "debe ser un numero". Ahora los dos
+   * caminos pasan por `parseHumanNumber`, y esto lo fija.
+   */
+  it.each(['1234.56', '1.234,56', '1,234.56', '1 234,56'])('la importacion acepta %s', (texto) => {
+    const resultado = coerceValue(texto, 'decimal', false, null, 'Valor');
+
+    expect(resultado.ok).toBe(true);
+    if (resultado.ok) expect(resultado.value).toBe(1234.56);
+  });
+});

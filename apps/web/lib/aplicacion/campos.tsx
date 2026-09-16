@@ -18,7 +18,14 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { buscarOpciones, type CampoDelManifiesto } from '@/lib/api/aplicacion';
 import { clavesDeLaAplicacion } from '@/lib/api/aplicacion';
-import { comoDecimal, comoEntero, comoFecha, comoFechaHora, comoTexto } from './formato';
+import {
+  comoDecimal,
+  comoEntero,
+  comoFecha,
+  comoFechaHora,
+  comoNumero,
+  comoTexto,
+} from './formato';
 
 /**
  * El registro de tipos de campo.
@@ -63,6 +70,15 @@ export interface RenderizadorDeCampo {
   esquema: (campo: CampoDelManifiesto) => z.ZodTypeAny;
   /** Con que empieza el formulario de creacion. */
   inicial: (campo: CampoDelManifiesto) => unknown;
+  /**
+   * Como entra en el formulario un valor que viene del servidor.
+   *
+   * Existe porque la tabla y el formulario tienen que decir lo mismo: si la
+   * celda muestra `350,00`, el control no puede mostrar `350.00`. Aqui, y no en
+   * el control, para que la conversion ocurra una vez al abrir y no en cada
+   * pulsacion: reformatear a media palabra movería el cursor.
+   */
+  hidratar?: (valor: unknown) => unknown;
 }
 
 /** Texto simple, truncado, con el valor entero al posarse encima. */
@@ -128,6 +144,39 @@ function entradaSimple(
   );
 }
 
+/**
+ * Un numero escrito como lo escribe una persona.
+ *
+ * Se envia el valor **canonico**, no el texto: `forms-and-workflows.md` pide
+ * formatear para mostrar y mandar valores numericos canonicos, y asi ningun
+ * consumidor de la API tiene que conocer la convencion de quien escribio.
+ *
+ * La API tambien sabe leer la notacion española, asi que esto es comodidad y no
+ * garantia: si un texto raro se colara, el servidor lo rechazaria igual.
+ */
+function numeroEscrito(campo: CampoDelManifiesto, entero: boolean): z.ZodType<number> {
+  return z
+    .union([z.number(), z.string()], { error: `"${campo.label}" debe ser un numero.` })
+    .transform((valor, ctx) => {
+      const parsed = typeof valor === 'number' ? valor : comoNumero(valor);
+
+      if (parsed === null) {
+        ctx.addIssue({ code: 'custom', message: `"${campo.label}" debe ser un numero.` });
+        return z.NEVER;
+      }
+
+      if (entero && !Number.isInteger(parsed)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `"${campo.label}" debe ser un numero entero.`,
+        });
+        return z.NEVER;
+      }
+
+      return parsed;
+    });
+}
+
 /** Opcional significa que tambien se acepta `null` y la cadena vacia. */
 function opcional(esquema: z.ZodTypeAny, requerido: boolean): z.ZodTypeAny {
   return requerido ? esquema : esquema.nullish();
@@ -153,13 +202,8 @@ export const RENDERIZADORES: Record<string, RenderizadorDeCampo> = {
         comoEntero(valor)
       ),
     control: entradaSimple('text', { inputMode: 'numeric' }),
-    esquema: (campo) =>
-      opcional(
-        z.coerce
-          .number({ error: `"${campo.label}" debe ser un numero.` })
-          .int(`"${campo.label}" debe ser un numero entero.`),
-        campo.required,
-      ),
+    hidratar: (valor) => (valor === null || valor === undefined ? null : comoEntero(valor)),
+    esquema: (campo) => opcional(numeroEscrito(campo, true), campo.required),
     inicial: () => null,
   },
 
@@ -172,8 +216,8 @@ export const RENDERIZADORES: Record<string, RenderizadorDeCampo> = {
         comoDecimal(valor)
       ),
     control: entradaSimple('text', { inputMode: 'decimal' }),
-    esquema: (campo) =>
-      opcional(z.coerce.number({ error: `"${campo.label}" debe ser un numero.` }), campo.required),
+    hidratar: (valor) => (valor === null || valor === undefined ? null : comoDecimal(valor)),
+    esquema: (campo) => opcional(numeroEscrito(campo, false), campo.required),
     inicial: () => null,
   },
 
