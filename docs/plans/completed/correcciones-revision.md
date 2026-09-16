@@ -249,6 +249,12 @@ dejado la prueba en verde sin ejercitar nada. Se añadió un caso que construye 
 Comprobado plantando un byte nulo a propósito: el guion lo señala con archivo y línea y sale con
 código 1. `verify` lo ejecuta el primero, porque es instantáneo.
 
+**Y el guion se coló a sí mismo.** Su propio comentario llevaba un byte nulo crudo, y pasó en
+verde: `git ls-files` solo lista lo ya seguido, y el archivo todavía estaba sin añadir cuando se
+ejecutó. Se descubrió al mirar `git ls-files --eol` después de commitear, que lo marcaba binario.
+Ahora la lista es `--cached --others --exclude-standard`: un archivo nuevo hay que mirarlo
+**antes** de commitearlo, que es cuando sirve de algo. Comprobado con un archivo sin seguir.
+
 ---
 
 ## Lo que se descarta, y por qué
