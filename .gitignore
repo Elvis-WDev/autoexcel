@@ -15,8 +15,10 @@ apps/api/src/infrastructure/database/generated/
 .env.*
 !.env.example
 
-# Almacenamiento local de archivos subidos
-storage/
+# Almacenamiento local de archivos subidos.
+# Anclado: sin la barra inicial tambien ignoraba el codigo fuente de
+# src/infrastructure/storage/, que no tiene nada que ver.
+/apps/api/storage/
 
 # Herramientas
 coverage/
