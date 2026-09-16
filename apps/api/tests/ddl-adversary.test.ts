@@ -218,7 +218,23 @@ describe('citado', () => {
 
   it('rechaza un literal absurdamente largo o con byte nulo', () => {
     expect(() => literal('a'.repeat(256))).toThrow();
-    expect(() => literal('con nulo')).toThrow();
+    expect(() => literal('con\u0000nulo')).toThrow();
+  });
+
+  /**
+   * El byte nulo, construido sin escribirlo.
+   *
+   * La prueba de arriba y la comprobacion de `literal` usan las dos la misma
+   * secuencia de escape. Si alguien la rompiera en los dos sitios a la vez, se
+   * seguirian encontrando y la prueba pasaria sin ejercitar nada. Este caso no
+   * escribe el caracter de ninguna forma: lo construye.
+   */
+  it('lo rechaza tambien cuando el byte nulo no se escribio en el codigo', () => {
+    const nulo = String.fromCharCode(0);
+
+    expect(nulo).toHaveLength(1);
+    expect(nulo.charCodeAt(0)).toBe(0);
+    expect(() => literal(`con${nulo}nulo`)).toThrow();
   });
 });
 

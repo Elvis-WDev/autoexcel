@@ -210,7 +210,7 @@ Verificado en los dos niveles. Siete pruebas de componente sobre los tres estado
 petición `GET .../records/:id` al abrir, y el otro intercepta esa ruta con un 404 y comprueba el
 mensaje y el botón inhabilitado.
 
-## C3 — Los bytes nulos y la limpieza
+## C3 — Los bytes nulos y la limpieza ✅ completada (2026-09-16)
 
 **Objetivo.** Que el código se lea como lo que hace.
 
@@ -228,6 +228,26 @@ el texto al guardarlo.
 
 **Verificación.** Los tests de identificadores y de adversario siguen en verde —son los que de
 verdad ejercitan el byte nulo— y no queda ningún byte de control en el árbol.
+
+**Cerrada.** Eran exactamente tres bytes nulos, uno por archivo, ahora escritos `'\u0000'`. El
+valor en ejecución es el mismo y se ve.
+
+Apareció una confirmación que el plan no tenía: **git ya los estaba marcando**. `git ls-files
+--eol` clasificaba los tres fuentes como `i/-text` —binarios— justo por llevar el byte. La señal
+estaba ahí y nadie la miraba.
+
+Eso mismo obligó a corregir la primera versión de la comprobación, que se apoyaba en la lista de
+archivos de texto de git: como git marca binario _por_ el byte nulo, en cuanto uno se colara y se
+commiteara el archivo saldría de la lista y dejaría de mirarse precisamente cuando hace falta.
+`scripts/sin-bytes-de-control.mjs` usa una lista explícita de extensiones.
+
+Y un riesgo de falso verde que el plan tampoco preveía: la prueba y la comprobación de `literal`
+usaban las dos la misma secuencia de escape, así que romperla en los dos sitios a la vez habría
+dejado la prueba en verde sin ejercitar nada. Se añadió un caso que construye el byte con
+`String.fromCharCode(0)`, sin escribirlo de ninguna forma.
+
+Comprobado plantando un byte nulo a propósito: el guion lo señala con archivo y línea y sale con
+código 1. `verify` lo ejecuta el primero, porque es instantáneo.
 
 ---
 
