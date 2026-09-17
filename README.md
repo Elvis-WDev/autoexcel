@@ -53,6 +53,36 @@ comprobado con ninguno de los tres, porque no hay credenciales en esta máquina.
 [`docs/quality/inference-manual-check.md`](docs/quality/inference-manual-check.md). El resto
 de deudas conocidas está en [`docs/plans/technical-debt.md`](docs/plans/technical-debt.md).
 
+## Probarlo sin instalar nada
+
+La pila entera en contenedores: PostgreSQL, la API y el panel.
+
+```bash
+docker compose -f docker-compose.demo.yml up --build
+```
+
+Luego <http://localhost:3100>, con la cuenta que se siembra en el primer
+arranque:
+
+| Correo             | Contraseña              |
+| ------------------ | ----------------------- |
+| `demo@example.com` | `demo-para-probar-2026` |
+
+El registro público está cerrado (`disableSignUp`), así que esa cuenta es la
+única forma de entrar. Se cambia en `docker-compose.demo.yml`, en `SEED_EMAIL` y
+`SEED_PASSWORD`.
+
+**La clave del motor de inferencia se toma de `apps/api/.env`**, que no entra en
+el repositorio; sin ella el análisis usa la estructura simple de RE-04 y el
+producto sigue funcionando, pero sin relaciones ni `select`.
+
+Para empezar de cero: `docker compose -f docker-compose.demo.yml down -v`.
+
+Este despliegue es para probar en una máquina y solo escucha en `127.0.0.1`. No
+está endurecido: las credenciales de la base y el secreto de sesión están a la
+vista en el compose, migra desde el arranque del propio servicio y los trabajos
+en segundo plano viven en el proceso.
+
 ## Requisitos
 
 - Node.js ≥ 22

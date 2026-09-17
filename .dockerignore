@@ -1,0 +1,29 @@
+# Lo que NUNCA debe entrar en una imagen.
+#
+# `.env` el primero: la clave del motor de inferencia llega por `env_file` al
+# arrancar, leida del disco de quien despliega. Copiarla dentro la dejaria
+# grabada en una capa, y las capas se comparten al publicar una imagen.
+**/.env
+**/.env.*
+!**/.env.example
+
+# Pesado e inutil: cada imagen instala lo suyo para su plataforma.
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+
+# Artefactos de pruebas y de ejecucion local.
+**/test-results
+**/playwright-report
+apps/web/e2e/informe
+apps/web/e2e/capturas
+apps/api/storage
+**/coverage
+
+# Historia y herramientas, que no hacen falta para construir.
+.git
+.github
+.vscode
+.idea
+docs
