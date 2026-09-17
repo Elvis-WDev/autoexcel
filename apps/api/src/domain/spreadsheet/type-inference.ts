@@ -42,6 +42,22 @@ const PHONE_DIGITS = /^\+?[\d\s\-().]+$/;
 const INTEGER = /^[+-]?\d+$/;
 const DECIMAL = /^[+-]?(\d+([.,]\d+)?|[.,]\d+)$/;
 
+/**
+ * Un cero a la izquierda: la marca de que eso no es un numero.
+ *
+ * `0923456789` es una cedula, `007` un codigo de producto, `04` un mes. Ningun
+ * sistema decimal escribe un cero delante para decir la misma cantidad, asi que
+ * esto no es una heuristica sobre el encabezado —eso es RI-03— sino un hecho
+ * sobre el valor: si alguien lo escribio, el cero significa algo.
+ *
+ * Importa porque guardarlo como entero lo destruye **en silencio**:
+ * `0923456789` se convierte en `923456789` y ya no hay forma de recuperarlo.
+ *
+ * `0` solo, `0.5` y `-0.25` siguen siendo numeros: la regla pide un cero
+ * seguido de otro digito.
+ */
+const CERO_A_LA_IZQUIERDA = /^[+-]?0\d/;
+
 const BOOLEAN_VALUES = new Set([
   'true',
   'false',
@@ -110,7 +126,10 @@ function candidatesFor(value: CellValue): Set<ApparentType> {
 
   if (BOOLEAN_VALUES.has(lowered)) candidates.add('boolean');
   if (EMAIL.test(text)) candidates.add('email');
-  if (INTEGER.test(text)) {
+  if (CERO_A_LA_IZQUIERDA.test(text)) {
+    // Ni entero ni decimal: se queda como texto, que es lo unico que conserva
+    // el cero. Ver CERO_A_LA_IZQUIERDA.
+  } else if (INTEGER.test(text)) {
     candidates.add('integer');
     candidates.add('decimal');
   } else if (DECIMAL.test(text)) {

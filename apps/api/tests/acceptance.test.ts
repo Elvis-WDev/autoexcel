@@ -225,7 +225,12 @@ describe('Criterios de aceptacion del MVP (ERS 17)', () => {
     expect(viajes.columns.map((column) => column.type)).toEqual([
       'date',
       'text',
-      'integer',
+      // El RUC es TEXTO, no un entero. Dos de los cuatro del archivo de demo
+      // empiezan por cero —`0990054321001`— y como entero ese cero se pierde
+      // para siempre. Esta expectativa decia `integer` hasta que una prueba con
+      // un motor real enseno la consecuencia: la cedula de un estudiante se
+      // guardaba mutilada. Un identificador no es un numero aunque lo parezca.
+      'text',
       'text',
       'text',
       'integer',

@@ -120,6 +120,41 @@ describe('inferencia de tipo', () => {
   it('devuelve texto sin confianza cuando no hay nada que mirar', () => {
     expect(inferColumnType([null, '', '  '])).toEqual({ type: 'text', confidence: 0 });
   });
+
+  /**
+   * El cero a la izquierda: la marca de que eso no es un numero.
+   *
+   * Encontrado probando con un motor de inferencia real: una cedula
+   * `0923456789` se guardaba como `923456789` y el cero no volvia. El modelo
+   * elegia `integer` porque nosotros se lo sugeriamos.
+   */
+  describe('un cero a la izquierda significa que no es un numero', () => {
+    it.each([
+      ['cedulas', ['1712345678', '0923456789', '0134567890']],
+      ['codigos de producto', ['007', '012', '003']],
+      ['meses con relleno', ['01', '02', '11']],
+      ['codigos postales', ['08001', '28013']],
+    ])('%s se quedan como texto', (_nombre, valores) => {
+      expect(inferColumnType(valores, 'Codigo').type).toBe('text');
+    });
+
+    /** Y lo que si es un numero sigue siendolo: la regla pide OTRO digito. */
+    it.each([
+      ['enteros normales', ['40', '24', '60'], 'integer'],
+      ['el cero solo', ['0', '1', '2'], 'integer'],
+      ['decimales bajo uno', ['0.5', '0.75'], 'decimal'],
+      ['negativos bajo uno', ['-0.25', '-1.5'], 'decimal'],
+    ] as const)('%s siguen siendo %s', (_nombre, valores, esperado) => {
+      expect(inferColumnType([...valores], 'Valor').type).toBe(esperado);
+    });
+
+    it('basta con que una fila lo lleve para no arriesgar la columna entera', () => {
+      // Cuatro numeros limpios y una cedula con cero: si gana el entero, esa
+      // fila pierde su cero para siempre.
+      const mezcla = ['1712345678', '1745678901', '1798765432', '0923456789'];
+      expect(inferColumnType(mezcla, 'Cedula').type).toBe('text');
+    });
+  });
 });
 
 describe('deteccion de encabezados', () => {

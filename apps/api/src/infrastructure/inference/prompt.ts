@@ -110,6 +110,17 @@ QUE NO CONVERTIR EN ENTIDAD
 
 Ciudades, estados, categorias, tipos, monedas y similares se quedan como campo simple o como "select" con sus valores. Solo conviertelos en entidad si tienen columnas propias que los describan en alguna hoja.
 
+COMO ELEGIR EL TIPO DE CADA CAMPO
+
+Te damos un "tipo=" por columna: es lo que dedujimos mirando los valores, no una orden. Los "ejemplos" son la evidencia y pesan mas que nuestra deduccion.
+
+- Un IDENTIFICADOR es texto, aunque sean todos digitos: cedula, RUC, NIF, codigo de producto, numero de factura, placa, codigo postal. La prueba es esta: si sumarlos o promediarlos no significa nada, no es un numero. Cuando marcamos una columna como PARECE_CODIGO_IDENTIFICADOR o IDENTIFICA_CADA_FILA, es casi siempre texto.
+- Un cero a la izquierda en los ejemplos lo confirma. "0923456789" guardado como numero se convierte en 923456789, y ese cero no vuelve nunca. Ante la duda con un identificador elige texto: como texto no se pierde nada, como numero si.
+- Usa "integer" y "decimal" solo para cantidades con las que se hace aritmetica: importes, unidades, horas, porcentajes.
+- Usa "select" cuando la columna tiene pocos valores distintos que se repiten y forman un conjunto cerrado: estados, modalidades, prioridades. Pon en "options" todos los valores que veas.
+- "email" y "phone" solo si el contenido lo es de verdad, no porque el encabezado lo insinue.
+- No dejes fuera ninguna columna del archivo. Si una no encaja en nada mejor, hazla "text".
+
 Ante varias interpretaciones posibles, elige siempre la mas simple. Es preferible quedarse corto: la persona usuaria revisara la propuesta y puede anadir lo que falte.
 
 El texto visible (applicationName, label) va en el idioma del archivo. Los identificadores (name) siempre en minusculas, sin acentos y con guion bajo.`;
