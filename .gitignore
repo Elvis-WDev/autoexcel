@@ -37,3 +37,6 @@ pnpm-debug.log*
 
 # Playwright
 apps/web/test-results/
+
+# Excel de prueba generado con `escenarios/generar.ts`: se reconstruye, no se versiona.
+/contabilidad.xlsx
