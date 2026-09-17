@@ -94,7 +94,7 @@ demostrar es lo mismo.
 produce un esquema que Gemini admite. Es el único punto donde los tres no son intercambiables, así
 que es el único que necesita una prueba que los otros no tienen.
 
-### P3 — La prueba de verdad
+### P3 — La prueba de verdad ✅ completada (2026-09-16)
 
 **Objetivo.** Saber si funciona, no si compila.
 
@@ -105,6 +105,37 @@ tabla de proveedores y modelos; y el cambio en `stack.md` si procede.
 (`gastos`, `pedidos`, `academia`) contra cada proveedor. Lo que se compara no es si pasa o falla,
 sino **qué modelo propone cada uno para el mismo archivo**: cuántas entidades, cuántas relaciones,
 qué tipos. Esa tabla es el entregable de esta fase.
+
+**Hecho, solo con Gemini**: no hay claves de Anthropic ni de OpenAI en esta máquina. Se probó con
+dos modelos del mismo proveedor, que resultó ser una comparación más útil de lo previsto.
+
+| Escenario               | `gemini-3-flash-preview`                       | `gemini-pro-latest` (→ `gemini-3.1-pro-preview`)  |
+| ----------------------- | ---------------------------------------------- | ------------------------------------------------- |
+| E1 · 1 hoja, 40 filas   | Inestable: 1–2 módulos, 0–1 relaciones         | 1 módulo, 9 campos, 0 relaciones. Estable         |
+| E2 · 2 hojas, 64 filas  | **Cayó al camino determinista** en una corrida | 3 módulos, 2 relaciones, derivó «Productos»       |
+| E3 · 5 hojas, 102 filas | 4 módulos, 3 relaciones; 2 columnas sin usar   | 4 módulos, 3 relaciones; 21 campos, sin descartes |
+
+Los tres escenarios pasan en navegador con los dos modelos: una columna por campo, el pie igual
+que el total de la API, ningún identificador a la vista, un control por tipo y selectores de
+relación que ofrecen registros.
+
+**Lo que el Pro arregló.** La caída al determinista de E2 —el validador rechazó la propuesta del
+flash dos veces— y la sobremodelización de E1, donde el flash inventaba una entidad «Responsables»
+a partir de la columna de correos. La variabilidad entre corridas prácticamente desaparece.
+
+**Lo que el Pro NO arregló, y por eso importa.** `Cédula` se sigue infiriendo como `integer`, así
+que `0923456789` se guarda como `923456789`: **el cero inicial se pierde en silencio**. Verificado
+en la base con los dos modelos. No es un fallo del sistema —hace fielmente lo que dice el
+blueprint— pero nadie avisa, y la pantalla de campos es la única defensa.
+
+**Dos fallos de texto**, encontrados por hablar con un modelo real y no con una propuesta fijada:
+
+- `singularize` aplica la regla `[rnldz]es$` a «Responsables» y produce «responsabl». Afecta a
+  cualquier etiqueta cuyo singular acabe en `-e`.
+- No hay concordancia de género: «Un estudiante puede tener **varios** matrículas».
+
+Los dos salen en la explicación de P-05, que es texto que lee el usuario. Quedan anotados en
+`technical-debt.md`.
 
 ## Riesgos
 
