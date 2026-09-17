@@ -6,6 +6,7 @@
 import { mkdir } from 'node:fs/promises';
 import { writeWorkbook } from '../../tests/helpers/xlsx-fixtures.js';
 import { libroAcademia, libroGastos, libroPedidos } from './fixtures.js';
+import { libroContabilidad } from './contabilidad.js';
 
 const destino = process.argv[2];
 if (!destino) {
@@ -19,6 +20,7 @@ for (const [nombre, hojas] of [
   ['gastos.xlsx', libroGastos()],
   ['pedidos.xlsx', libroPedidos()],
   ['academia.xlsx', libroAcademia()],
+  ['contabilidad.xlsx', libroContabilidad()],
 ] as const) {
   const ruta = await writeWorkbook(destino, nombre, hojas);
   const filas = hojas.reduce((total, hoja) => total + Math.max(0, hoja.rows.length - 1), 0);

@@ -35,7 +35,7 @@ export const proposalSchema = z.object({
           .string()
           .nullable()
           .describe(
-            'Solo en entidades "derived": campo que decide si dos filas son el mismo registro.',
+            'Campo por el que se reconoce un registro: un codigo, un RUC, una cedula. En entidades "derived" decide si dos filas son la misma. En entidades "sheet" sirve ademas para enlazar cuando otra hoja referencia por ese codigo en vez de por el nombre.',
           ),
         fields: z.array(
           z.object({
@@ -98,6 +98,7 @@ REGLAS QUE NO PUEDES ROMPER
 3. Cada campo que venga de una columna del archivo debe indicar su hoja y su columna de origen. Es lo que permite importar los datos despues.
 4. Cada campo de tipo "relation" necesita su entrada correspondiente en "relations".
 5. Cada entidad necesita un displayField que sirva para reconocer el registro en una lista: un nombre, una razon social, una placa. Nunca un importe, una fecha ni un booleano.
+6. Si otra hoja referencia a una entidad por un CODIGO y no por su nombre, declara ese codigo como dedupeField de la entidad referenciada. Es lo que permite enlazar las filas: sin eso, "5.2.02" en la hoja de movimientos no encuentra la cuenta que se llama "Arriendo" y el enlace se queda vacio. Pasa constantemente con planes de cuentas, codigos de producto y numeros de documento.
 
 COMO DECIDIR QUE ES UNA ENTIDAD
 

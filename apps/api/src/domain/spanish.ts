@@ -19,7 +19,23 @@
  * como la descripcion de las relaciones, y una divergencia entre ambas se
  * notaria enseguida.
  */
-export function singularize(word: string): string {
+export function singularize(frase: string): string {
+  /*
+   * "Plan de Cuentas" es UN plan, no UNA cuenta.
+   *
+   * En espanol el nucleo de un sintagma nominal va delante: "plan de cuentas",
+   * "orden de compra", "forma de pago". Si se mira la ultima palabra se acaba
+   * escribiendo "una plan de cuenta", que fue justo lo que salio al probar con
+   * un libro de contabilidad real. Se singulariza la cabeza y se deja el resto.
+   */
+  const espacio = frase.indexOf(' ');
+  if (espacio > 0) {
+    return `${singularizarPalabra(frase.slice(0, espacio))}${frase.slice(espacio)}`;
+  }
+  return singularizarPalabra(frase);
+}
+
+function singularizarPalabra(word: string): string {
   if (/ces$/i.test(word)) return `${word.slice(0, -3)}z`;
 
   // Solo estas consonantes admiten el plural en "es" en la practica.
@@ -61,7 +77,8 @@ export function singularize(word: string): string {
  * "-cion", "-sion", "-dad", "-tad", "-tud" y "-umbre".
  */
 export function isFeminine(singular: string): boolean {
-  const palabra = singular.toLowerCase();
+  // El genero lo decide la cabeza del sintagma, por lo mismo que el singular.
+  const palabra = (singular.split(' ')[0] ?? singular).toLowerCase();
 
   if (/(cion|sion|dad|tad|tud|umbre)$/.test(palabra)) return true;
   return /a$/.test(palabra);
