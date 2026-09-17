@@ -1,6 +1,6 @@
 import type { StoredBlueprint } from '../../../application/ports/blueprint-repository.js';
 import type { JobRecord } from '../../../application/ports/job-repository.js';
-import { singularize } from '../../../domain/spanish.js';
+import { indefiniteArticle, severalOf, singularize } from '../../../domain/spanish.js';
 
 export interface BlueprintView {
   applicationName: string;
@@ -99,7 +99,20 @@ function describeRelation(fromPlural: string, toPlural: string): string {
   const from = singularize(fromPlural).toLowerCase();
   const to = singularize(toPlural).toLowerCase();
 
-  return `Cada ${from} pertenece a un ${to}. Un ${to} puede tener varios ${from}s.`;
+  const un = indefiniteArticle(to);
+  const varios = severalOf(from);
+
+  /*
+   * El plural se toma de la etiqueta, no se reconstruye.
+   *
+   * Antes se escribia `${from}s`, que convertia "conductores" en "conductors":
+   * volver a pluralizar un singular ya adivinado multiplica el error. La
+   * etiqueta original ya viene en plural y es la que la persona ve en el resto
+   * de la pantalla.
+   */
+  const varias = fromPlural.toLowerCase();
+
+  return `Cada ${from} pertenece a ${un} ${to}. ${un === 'una' ? 'Una' : 'Un'} ${to} puede tener ${varios} ${varias}.`;
 }
 
 export interface JobView {

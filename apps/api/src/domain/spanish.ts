@@ -21,8 +21,57 @@
  */
 export function singularize(word: string): string {
   if (/ces$/i.test(word)) return `${word.slice(0, -3)}z`;
+
   // Solo estas consonantes admiten el plural en "es" en la practica.
-  if (/[rnldz]es$/i.test(word)) return word.slice(0, -2);
+  if (/[rnldz]es$/i.test(word)) {
+    const sinLasDos = word.slice(0, -2);
+
+    /*
+     * Pero "responsables" no es el plural de "responsabl".
+     *
+     * Una palabra espanola no puede terminar en dos consonantes. Si al quitar
+     * "es" queda un grupo asi, es que el singular no acababa en consonante sino
+     * en "-e", y solo habia que quitar la "s":
+     *
+     *   responsables -> responsabl?  "bl" es imposible  -> responsable
+     *   detalles     -> detall?      "ll" es imposible  -> detalle
+     *   hombres      -> hombr?       "br" es imposible  -> hombre
+     *   conductores  -> conductor    "or" es posible    -> conductor
+     *
+     * Se encontro con una propuesta real: el asistente decia "Cada gasto
+     * pertenece a un responsabl".
+     */
+    if (/[^aeiouáéíóúü][^aeiouáéíóúü]$/i.test(sinLasDos)) return word.slice(0, -1);
+    return sinLasDos;
+  }
+
   if (/s$/i.test(word)) return word.slice(0, -1);
   return word;
+}
+
+/**
+ * Genero aproximado, para concordar el articulo.
+ *
+ * Sin esto el asistente escribe "un ciudad" y "varios facturas". No hay forma
+ * de acertar siempre —"el dia", "el problema" y "el mapa" son masculinos y
+ * acaban en "a"— pero las etiquetas que llegan aqui son nombres de entidades de
+ * negocio, donde la terminacion acierta casi siempre.
+ *
+ * Las terminaciones de la segunda lista son femeninas sin excepcion practica:
+ * "-cion", "-sion", "-dad", "-tad", "-tud" y "-umbre".
+ */
+export function isFeminine(singular: string): boolean {
+  const palabra = singular.toLowerCase();
+
+  if (/(cion|sion|dad|tad|tud|umbre)$/.test(palabra)) return true;
+  return /a$/.test(palabra);
+}
+
+/** `un`/`una`, `varios`/`varias`: el articulo que concuerda con la palabra. */
+export function indefiniteArticle(singular: string): 'un' | 'una' {
+  return isFeminine(singular) ? 'una' : 'un';
+}
+
+export function severalOf(singular: string): 'varios' | 'varias' {
+  return isFeminine(singular) ? 'varias' : 'varios';
 }
